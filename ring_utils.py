@@ -42,8 +42,8 @@ awg = { #American Wire Gauge to inches
 al_wire_density = { 0:0.1, #Default, pure AL
                     5356:0.0954}
 
-#Average of inner and outer diameter
 def middle_diameter(wire_diameter, inner_diameter = None, outer_diameter = None):
+    """ The average of the inner and outer diameter gives us the middle diameter """
     if inner_diameter and outer_diameter:
         return (inner_diameter + outer_diameter) / 2
     if inner_diameter:
@@ -52,16 +52,14 @@ def middle_diameter(wire_diameter, inner_diameter = None, outer_diameter = None)
         return outer_diameter - wire_diameter
 
 def circumference(wire_diameter, inner_diameter = None, outer_diameter = None):
-    return 2 * pi * (middle_diameter(inner_diameter = inner_diameter, outer_diameter = outer_diameter, wire_diameter = wire_diameter) / 2)
+    """ Calculates the circumference of the ring using the middle diameter """
+    return 2 * pi * middle_diameter(inner_diameter = size_to_length(inner_diameter), outer_diameter = outer_diameter, wire_diameter = wire_diameter) / 2
 
-#broken
-#Calculates how many rings can be gotten out of a spool of wire
 def spool(length, wire_diameter, ring_size):
-    if type(ring_size) == str:
-        ring_size = float(sum(Fraction(s) for s in ring_size.split()))
-    return round(length / circumference(inner_diameter = ring_size, wire_diameter = wire_diameter))
+    """ Calculates how many rings can be gotten out of a spool of wire """
+    return round(length / circumference(inner_diameter = size_to_length(ring_size), wire_diameter = wire_diameter))
 
-#Calculates spool length
+#Calibrated using Grainger
 def weight_to_length(weight, wire_diameter, density):
     """Calculates spool length given the spool weight, gauge, and metal density """
     return weight / (density * pi * (wire_diameter / 2) ** 2)
@@ -80,7 +78,7 @@ def e4_1_area(inner_diameter, wire_diameter):
     ar = aspect_ratio(wire_diameter, inner_diameter)
     iph = wire_diameter * (0.9215 * ar - 0.1566)
     ipv = wire_diameter * (-0.0582 * ar**3 + 0.8677 * ar**2 - 3.2996 * ar + 6.2401)
-    return round(144 / (iph * ipv));
+    return round(144 / (iph * ipv))
 
 #broken
 def byzantine(inner_diameter, wire_diameter, length, connectors = 2):
@@ -108,7 +106,7 @@ def byzantine(inner_diameter, wire_diameter, length, connectors = 2):
         },
     }
 
-    ar = aspect_ratio(inner_diameter, wire_diameter)
+    ar = aspect_ratio(size_to_length(inner_diameter), wire_diameter)
     #ipnu = inches / normalized unit
     ipnu = (variants[connectors]['a5'] * ar**5 + variants[connectors]['a4'] * ar**4 + variants[connectors]['a3'] * ar**3 + variants[connectors]['a2'] * ar**2 + variants[connectors]['a1'] * ar + variants[connectors]['a0']);
     #// rpl = rings / length
@@ -117,6 +115,14 @@ def byzantine(inner_diameter, wire_diameter, length, connectors = 2):
     rpl = variants[connectors]['rounding_multiple'] * round(rpl / variants[connectors]['rounding_multiple']);
     return rpl + connectors;
 
-print "Rings per spool: %s, should be ~3000" % spool(length = weight_to_length(1, 16, al_wire_density[5356]), wire_diameter = awg[16], ring_size = '3/16')
+def size_to_length(ring_size):
+    """ Converts fractional size to decimal """
+    if type(ring_size) == str:
+        ring_size = float(sum(Fraction(s) for s in ring_size.split()))
+    return ring_size
 
-print "Byzantine (2 connector): %s , should be 68" %byzantine(inner_diameter=.5, wire_diameter=.1, length=10)
+length = weight_to_length(1, awg[16], al_wire_density[5356])
+print "You will get %d rings per %d inch (%d ft) length spool, should be ~3000" % (spool(length = length, wire_diameter = awg[16], ring_size = size_to_length('5/16')), length, length/12)
+
+#Need to find the math on this to confirm
+#print "Byzantine (2 connector): %s , should be 68" %byzantine(inner_diameter=.5, wire_diameter=.1, length=10)
